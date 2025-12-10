@@ -10,6 +10,8 @@
     <style>[x-cloak] { display: none !important; }</style>
 </head>
 <body class="bg-gray-100 font-sans antialiased text-gray-900">
+    <x-confirm-modal />
+    <x-notification />
     <nav class="bg-white border-b border-gray-200">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">

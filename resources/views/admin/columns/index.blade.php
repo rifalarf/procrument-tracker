@@ -41,10 +41,18 @@
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex space-x-2">
                         <a href="{{ route('admin.columns.edit', $column->id) }}" class="text-indigo-600 hover:text-indigo-900">Edit</a>
                         @if($column->is_dynamic)
-                            <form action="{{ route('admin.columns.destroy', $column->id) }}" method="POST" onsubmit="return confirm('Are you sure?');">
+                            <form action="{{ route('admin.columns.destroy', $column->id) }}" method="POST" id="delete-form-{{ $column->id }}">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                                <button type="button" 
+                                    @click="$dispatch('open-confirm-modal', {
+                                        title: 'Delete Column',
+                                        message: 'Are you sure you want to delete this column?',
+                                        confirmText: 'Delete',
+                                        cancelText: 'Cancel',
+                                        onConfirm: () => document.getElementById('delete-form-{{ $column->id }}').submit()
+                                    })"
+                                    class="text-red-600 hover:text-red-900">Delete</button>
                             </form>
                         @endif
                     </td>

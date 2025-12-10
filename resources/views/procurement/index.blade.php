@@ -40,38 +40,67 @@
         }
     },
     deleteSelected() {
-        if (!confirm('Are you sure you want to delete ' + this.selected.length + ' items?')) return;
-        
-        fetch('{{ route('admin.procurement.bulk-delete') }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-            body: JSON.stringify({ ids: this.selected })
-        }).then(res => {
-            if(res.ok) {
-                window.location.reload();
-            } else {
-                alert('Failed to delete');
+        if (this.selected.length === 0) return;
+
+        window.dispatchEvent(new CustomEvent('open-confirm-modal', {
+            detail: {
+                title: 'Delete Selected Items',
+                message: 'Are you sure you want to delete ' + this.selected.length + ' items?',
+                confirmText: 'Delete',
+                cancelText: 'Cancel',
+                onConfirm: () => {
+                    fetch('{{ route('admin.procurement.bulk-delete') }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify({ ids: this.selected })
+                    }).then(res => {
+                        if(res.ok) {
+                            window.location.reload();
+                        } else {
+                            window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Failed to delete items', type: 'error' } }));
+                        }
+                    });
+                }
             }
-        });
+        }));
     },
     deleteAll() {
-        if (!confirm('WARNING: This will delete ALL data in the database. Are you sure?')) return;
-        if (!confirm('Double Check: Are you absolutely really sure?')) return;
-        
-        // Form submit for delete all to handle it cleanly via standard controller action or fetch
-        // Fetch is fine but redirect is needed.
-        let form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route('admin.procurement.delete-all') }}';
-        
-        let csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = '_token';
-        csrf.value = '{{ csrf_token() }}';
-        form.appendChild(csrf);
-        
-        document.body.appendChild(form);
-        form.submit();
+        window.dispatchEvent(new CustomEvent('open-confirm-modal', {
+            detail: {
+                title: 'DELETE ALL DATA',
+                message: 'WARNING: This will delete ALL data in the database. Are you absolutely sure?',
+                confirmText: 'Yes, Delete Everything',
+                cancelText: 'Cancel',
+                onConfirm: () => {
+                    // Double check by opening another modal or just proceeding? 
+                    // User logic had a double confirm.
+                    // For simplicity, let's just do one strong confirm or re-dispatch.
+                    // Let's emulate the double check by dispatching another one.
+                    setTimeout(() => {
+                         window.dispatchEvent(new CustomEvent('open-confirm-modal', {
+                            detail: {
+                                title: 'FINAL WARNING',
+                                message: 'This action cannot be undone. double check: Are you absolutely really sure?',
+                                confirmText: 'I Understand, DELETE',
+                                cancelText: 'Cancel',
+                                onConfirm: () => {
+                                    let form = document.createElement('form');
+                                    form.method = 'POST';
+                                    form.action = '{{ route('admin.procurement.delete-all') }}';
+                                    let csrf = document.createElement('input');
+                                    csrf.type = 'hidden';
+                                    csrf.name = '_token';
+                                    csrf.value = '{{ csrf_token() }}';
+                                    form.appendChild(csrf);
+                                    document.body.appendChild(form);
+                                    form.submit();
+                                }
+                            }
+                        }));
+                    }, 200);
+                }
+            }
+        }));
     }
 }" x-init="initResize();" class="space-y-6">
 
@@ -213,8 +242,10 @@
                                             .then(r => r.json())
                                             .then(data => {
                                                 if(!data.success) {
-                                                    alert('Failed: ' + (data.message || 'Unknown'));
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Failed: ' + (data.message || 'Unknown'), type: 'error' } }));
                                                     this.current = oldVal; 
+                                                } else {
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Status updated', type: 'success' } }));
                                                 }
                                             });
                                         }
@@ -245,8 +276,10 @@
                                             .then(r => r.json())
                                             .then(data => {
                                                 if(!data.success) {
-                                                    alert('Failed: ' + (data.message || 'Unknown'));
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Failed: ' + (data.message || 'Unknown'), type: 'error' } }));
                                                     this.current = oldVal; // Revert
+                                                } else {
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'Bagian updated', type: 'success' } }));
                                                 }
                                             });
                                         }
@@ -271,7 +304,13 @@
                                                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                                                 },
                                                 body: JSON.stringify({ field: 'pg', value: this.val })
-                                            }).then(r => r.json()).then(d => { if(!d.success) alert(d.message); });
+                                            }).then(r => r.json()).then(d => { 
+                                                if(!d.success) {
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: d.message, type: 'error' } }));
+                                                } else {
+                                                    window.dispatchEvent(new CustomEvent('notify', { detail: { message: 'PG updated', type: 'success' } }));
+                                                }
+                                            });
                                         }
                                      }">
                                         <input type="text" x-model="val" @blur="update()" @keydown.enter="update()" class="text-sm border-gray-300 rounded p-1 w-full bg-transparent hover:bg-gray-50 focus:bg-white transition-colors">
