@@ -5,11 +5,11 @@
     <div class="card-body p-0">
         <div class="px-6 py-5 flex justify-between items-center bg-base-200">
             <div>
-                <h3 class="text-xl font-bold">Procurement Detail</h3>
+                <h1 class="text-2xl font-bold text-gray-800">Detail Pengadaan {{ $item->nama_barang }}</h1>
                 <p class="text-sm opacity-70">ID: {{ $item->id }} | {{ $item->mat_code }}</p>
             </div>
             <div>
-                <a href="{{ route('dashboard') }}" class="btn btn-error btn-sm">Back to Dashboard</a>
+                <a href="{{ route('dashboard') }}" class="btn btn-error btn-sm">Kembali ke Dashboard</a>
             </div>
         </div>
         
@@ -61,7 +61,7 @@
                     </div>
                 </div>
 
-                <div class="divider my-6">Editable Fields</div>
+                <div class="divider my-6">Kolom yang Dapat Diedit</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-base-200 p-6 rounded-box">
                     <!-- Status -->
@@ -82,7 +82,7 @@
                     <div class="form-control w-full">
                          <label class="label"><span class="label-text font-medium">Bagian</span></label>
                         <select name="bagian" class="select select-bordered w-full">
-                            <option value="">Select Bagian</option>
+                            <option value="">Pilih Bagian</option>
                             @foreach(\App\Enums\BagianEnum::cases() as $bagian)
                                 <option value="{{ $bagian->value }}" {{ $item->bagian === $bagian->value ? 'selected' : '' }}>{{ $bagian->label() }}</option>
                             @endforeach
@@ -96,11 +96,11 @@
 
                     <!-- Admin Only Fields (If Admin) -->
                     @if(auth()->user()->isAdmin())
-                         <div class="col-span-full divider text-xs text-warning uppercase font-bold mt-4">Admin Override</div>
+                         <div class="col-span-full divider text-xs text-warning uppercase font-bold mt-4">Override Admin</div>
                          <div class="form-control w-full">
-                            <label class="label"><span class="label-text font-medium text-warning">Admin: Buyer</span></label>
+                            <label class="label"><span class="label-text font-medium text-warning">Admin: Pembeli</span></label>
                             <select name="buyer" class="select select-bordered select-warning w-full">
-                                <option value="">Select Buyer</option>
+                                <option value="">Pilih Pembeli</option>
                                 @foreach(\App\Enums\BuyerEnum::cases() as $buyer)
                                     <option value="{{ $buyer->value }}" {{ $item->buyer === $buyer || $item->buyer?->value === $buyer->value ? 'selected' : '' }}>{{ $buyer->label() }}</option>
                                 @endforeach
@@ -114,7 +114,7 @@
                 </div>
 
                 <div class="card-actions justify-end mt-6">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
                 </div>
 
             </form>

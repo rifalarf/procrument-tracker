@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Procurement Status</title>
+    <title>Procurement Tracker</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
@@ -22,13 +22,14 @@
               </div>
               <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
                 @auth
+                    <li><a href="{{ route('history.index') }}">History</a></li>
                     @if(Auth::user()->isAdmin())
-                        <li><a href="{{ route('admin.users.index') }}">Management Users</a></li>
+                        <li><a href="{{ route('admin.users.index') }}">Kelola User</a></li>
                     @endif
                 @endauth
               </ul>
             </div>
-            <a href="/dashboard" class="btn btn-ghost text-xl text-primary">Procurement Status</a>
+            <a href="/dashboard" class="btn btn-ghost text-xl text-primary">Procurement Tracker</a>
         </div>
         <div class="navbar-center hidden lg:flex">
              <!-- Centered menu if needed -->
@@ -36,8 +37,9 @@
         <div class="navbar-end gap-2">
             @auth
                 <span class="text-sm font-medium opacity-70 hidden md:inline-block">{{ Auth::user()->email }} ({{ Auth::user()->role }})</span>
+                <a href="{{ route('history.index') }}" class="btn btn-sm btn-ghost hidden md:inline-flex">History</a>
                 @if(Auth::user()->isAdmin())
-                    <a href="{{ route('admin.users.index') }}" class="btn btn-sm btn-ghost hidden md:inline-flex">Management Users</a>
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-sm btn-ghost hidden md:inline-flex">Kelola User</a>
                 @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf

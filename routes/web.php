@@ -30,6 +30,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/procurement/{id}/status', [ProcurementController::class, 'updateStatus'])->name('procurement.updateStatus');
     
     // Admin Routes
+    Route::get('/history', [\App\Http\Controllers\HistoryController::class, 'index'])->name('history.index');
+
     Route::middleware([\App\Http\Middleware\EnsureUserIsAdmin::class])->prefix('admin')->name('admin.')->group(function () {
          Route::resource('users', AdminController::class)->only(['index', 'store', 'destroy', 'edit', 'update']);
          

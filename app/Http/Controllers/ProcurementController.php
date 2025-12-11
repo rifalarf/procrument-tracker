@@ -76,7 +76,15 @@ class ProcurementController extends Controller
              $query->where('user_requester', $user);
         }
 
-        $items = $query->latest('last_updated_at')->paginate(100);
+        $items = $query->latest('last_updated_at')->paginate(50);
+
+        // Auto-redirect if page is empty and not first page (e.g. after deletion)
+        if ($items->isEmpty() && $items->currentPage() > 1) {
+             return redirect()->route('dashboard', array_merge(
+                 $request->all(), 
+                 ['page' => $items->currentPage() - 1]
+             ));
+        }
         $columns = \App\Models\TableColumn::ordered()->visible()->get();
         $buyers = \App\Enums\BuyerEnum::cases();
         $statuses = \App\Enums\ProcurementStatusEnum::cases();
