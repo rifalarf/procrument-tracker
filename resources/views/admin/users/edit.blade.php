@@ -26,6 +26,11 @@
             </div>
 
             <div class="form-control w-full mt-4">
+                <label class="label"><span class="label-text font-medium">Reset Password (Optional)</span></label>
+                <input type="password" name="password" placeholder="Leave blank to keep current password" class="input input-bordered w-full">
+            </div>
+
+            <div class="form-control w-full mt-4">
                 <label class="label"><span class="label-text font-bold">Bagian Access</span></label>
                 <div class="label-text-alt mb-2">Select which divisions this user can access. Leave all unchecked for no restrictions (or strict 'none' depending on policy). Currently assuming unchecked = no explicit restrictions if handling null, but let's be explicit.</div>
                 

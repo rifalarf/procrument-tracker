@@ -41,12 +41,19 @@ class AdminController extends Controller
         $request->validate([
             'role' => 'required|in:admin,user',
             'bagian_access' => 'nullable|array',
+            'password' => 'nullable|min:6', // Optional password update
         ]);
 
-        $user->update([
+        $data = [
             'role' => $request->role,
             'bagian_access' => $request->bagian_access,
-        ]);
+        ];
+
+        if ($request->filled('password')) {
+            $data['password'] = bcrypt($request->password);
+        }
+
+        $user->update($data);
 
         return redirect()->route('admin.users.index')->with('success', 'User updated successfully.');
     }
