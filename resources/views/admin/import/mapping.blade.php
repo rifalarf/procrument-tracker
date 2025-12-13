@@ -15,6 +15,8 @@
     <form action="{{ route('admin.import.process') }}" method="POST" id="import-form">
         @csrf
         <input type="hidden" name="file_path" value="{{ $file_path }}">
+        <input type="hidden" name="file_name" value="{{ $file_name ?? 'Unknown' }}">
+        <input type="hidden" name="total_rows" value="{{ $total_rows ?? 0 }}">
 
         <!-- Conflict Strategy Card -->
         <div class="bg-white overflow-hidden shadow rounded-lg mb-8 border border-gray-100">

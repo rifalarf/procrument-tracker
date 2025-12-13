@@ -6,6 +6,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\AdvancedProcurementImport;
+use App\Models\ImportProgress;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 
@@ -27,16 +28,18 @@ class ProcessLargeImport implements ShouldQueue
     protected array $mapping;
     protected string $strategy;
     protected string $userEmail;
+    protected int $progressId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $filePath, array $mapping, string $strategy, string $userEmail)
+    public function __construct(string $filePath, array $mapping, string $strategy, string $userEmail, int $progressId)
     {
         $this->filePath = $filePath;
         $this->mapping = $mapping;
         $this->strategy = $strategy;
         $this->userEmail = $userEmail;
+        $this->progressId = $progressId;
     }
 
     /**
@@ -45,6 +48,12 @@ class ProcessLargeImport implements ShouldQueue
     public function handle(): void
     {
         Log::info("Starting large import job for file: {$this->filePath}");
+
+        // Update progress to processing
+        $progress = ImportProgress::find($this->progressId);
+        if ($progress) {
+            $progress->update(['status' => 'processing']);
+        }
 
         try {
             $absolutePath = Storage::path($this->filePath);
@@ -56,7 +65,7 @@ class ProcessLargeImport implements ShouldQueue
             }
 
             Excel::import(
-                new AdvancedProcurementImport($this->mapping, $this->strategy),
+                new AdvancedProcurementImport($this->mapping, $this->strategy, $this->progressId),
                 $absolutePath
             );
 
@@ -65,10 +74,24 @@ class ProcessLargeImport implements ShouldQueue
                 Storage::delete($this->filePath);
             }
 
+            // Update progress to completed
+            if ($progress) {
+                $progress->update(['status' => 'completed']);
+            }
+
             Log::info("Large import job completed successfully for file: {$this->filePath}");
 
         } catch (\Exception $e) {
             Log::error("Large import job failed: " . $e->getMessage());
+            
+            // Update progress to failed
+            if ($progress) {
+                $progress->update([
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage()
+                ]);
+            }
+            
             throw $e; // Re-throw to mark job as failed
         }
     }
@@ -79,6 +102,15 @@ class ProcessLargeImport implements ShouldQueue
     public function failed(\Throwable $exception): void
     {
         Log::error("Import job permanently failed: " . $exception->getMessage());
+        
+        // Update progress to failed
+        $progress = ImportProgress::find($this->progressId);
+        if ($progress) {
+            $progress->update([
+                'status' => 'failed',
+                'error_message' => $exception->getMessage()
+            ]);
+        }
         
         // Cleanup the temp file even on failure
         if (Storage::exists($this->filePath)) {

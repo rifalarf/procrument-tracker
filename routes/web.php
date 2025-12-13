@@ -42,6 +42,8 @@ Route::middleware(['auth'])->group(function () {
          Route::get('/import', [\App\Http\Controllers\AdminImportController::class, 'show'])->name('import.form');
          Route::post('/import/parse', [\App\Http\Controllers\AdminImportController::class, 'parse'])->name('import.parse');
          Route::post('/import/process', [\App\Http\Controllers\AdminImportController::class, 'process'])->name('import.process');
+         Route::get('/import/progress/{id}', [\App\Http\Controllers\AdminImportController::class, 'progress'])->name('import.progress');
+         Route::get('/import/progress/{id}/status', [\App\Http\Controllers\AdminImportController::class, 'progressStatus'])->name('import.progress.status');
 
          // Column Management
          Route::resource('columns', \App\Http\Controllers\Admin\ColumnSettingsController::class);

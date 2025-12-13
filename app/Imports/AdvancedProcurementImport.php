@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Models\ProcurementItem;
+use App\Models\ImportProgress;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -14,17 +15,24 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
 {
     protected $mapping;
     protected $strategy;
+    protected ?int $progressId;
 
-    public function __construct(array $mapping, string $strategy)
+    public function __construct(array $mapping, string $strategy, ?int $progressId = null)
     {
         $this->mapping = $mapping;
-        $strategy = $strategy;
         $this->strategy = $strategy;
+        $this->progressId = $progressId;
     }
 
     public function collection(Collection $rows)
     {
+        $successCount = 0;
+        $failedCount = 0;
+        $processedCount = 0;
+
         foreach ($rows as $row) {
+            $processedCount++;
+            
             // Map row data based on user mapping (DB Column Key => Excel Header Slug)
             $data = [];
 
@@ -54,7 +62,6 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                 $data['nilai'] = $this->cleanNilai($data['nilai']);
             }
 
-
             // Enum Conversion for Status
             if (isset($data['status'])) {
                 $statusInput = trim($data['status']); 
@@ -68,21 +75,18 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                 }
 
                 // 3. Try Normalized (spaces -> underscores) e.g. "Proses PO" -> "PROSES_PO"
-                // And explicit mapping for common legacy values
                 if (!$statusEnum) {
                     $normalized = strtoupper(str_replace(' ', '_', $statusInput));
                     $statusEnum = \App\Enums\ProcurementStatusEnum::tryFrom($normalized);
                     
-                    // Fallback map
                     if (!$statusEnum) {
-                         if ($normalized === 'PROSES_PO') $statusEnum = \App\Enums\ProcurementStatusEnum::PO; // or APPROVAL_PO
+                         if ($normalized === 'PROSES_PO') $statusEnum = \App\Enums\ProcurementStatusEnum::PO;
                     }
                 }
 
                 if ($statusEnum) {
                     $data['status'] = $statusEnum->value;
                 } else {
-                    // 4. Try matching from label
                     $found = false;
                     foreach (\App\Enums\ProcurementStatusEnum::cases() as $case) {
                         if (strtolower(trim($case->label())) === strtolower($statusInput)) {
@@ -91,12 +95,11 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                             break;
                         }
                     }
-                    if (!$found) $data['status'] = null; // SAFETY: Set to null if invalid
+                    if (!$found) $data['status'] = null;
                 }
             }
             
-            // Enum Conversion for Buyer (similar logic)
-            // Enum Conversion for Buyer (similar logic)
+            // Enum Conversion for Buyer
             if (isset($data['buyer'])) {
                 $buyerInput = trim($data['buyer']);
                 
@@ -106,7 +109,6 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                 }
                 
                 if (!$buyerEnum) {
-                     // Normalize Buyer: "John Doe" -> "JOHN_DOE"
                      $normalizedBuyer = strtoupper(str_replace(' ', '_', $buyerInput));
                      $buyerEnum = \App\Enums\BuyerEnum::tryFrom($normalizedBuyer);
                 }
@@ -122,7 +124,7 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                             break;
                         }
                     }
-                     if (!$found) $data['buyer'] = null; // Safety
+                     if (!$found) $data['buyer'] = null;
                 }
             }
 
@@ -136,7 +138,6 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                 }
                 
                 if (!$bagianEnum) {
-                     // Normalize Bagian: "PBJ 1" -> "PBJ1" (Remove spaces)
                      $normalizedBagian = strtoupper(str_replace(' ', '', $bagianInput));
                      $bagianEnum = \App\Enums\BagianEnum::tryFrom($normalizedBagian);
                 }
@@ -152,18 +153,14 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                             break;
                         }
                     }
-                    if (!$found) $data['bagian'] = null; // Safety
+                    if (!$found) $data['bagian'] = null;
                 }
             }
-            
-
-            // Check for conflict (ID Dokumen/Procurement)
             
             // Check for conflict (ID Dokumen/Procurement)
             $externalId = $data['no_pr'] ?? $data['id_procurement'] ?? null;
             
             if ($externalId) {
-                // Remove update/create logic duplication
                 $existing = ProcurementItem::where('no_pr', $externalId)->first();
                 if ($existing) {
                     if ($this->strategy === 'update') {
@@ -171,6 +168,7 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                              'last_updated_by' => auth()->user()->email ?? 'Importer',
                              'last_updated_at' => now(),
                         ]));
+                        $successCount++;
                     }
                     continue; 
                 }
@@ -187,10 +185,32 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
                     'last_updated_by' => auth()->user()->email ?? 'Importer',
                     'last_updated_at' => now(),
                 ]));
+                $successCount++;
             } catch (\Exception $e) {
-                // Log to Laravel log instead for production
+                $failedCount++;
                 \Log::warning('Import failed for row: ' . $e->getMessage());
             }
+        }
+
+        // Update progress after each chunk
+        $this->updateProgress($processedCount, $successCount, $failedCount);
+    }
+
+    /**
+     * Update the import progress record
+     */
+    private function updateProgress(int $processed, int $success, int $failed): void
+    {
+        if (!$this->progressId) {
+            return;
+        }
+
+        $progress = ImportProgress::find($this->progressId);
+        if ($progress) {
+            $progress->increment('processed_rows', $processed);
+            $progress->increment('success_count', $success);
+            $progress->increment('failed_count', $failed);
+            $progress->save();
         }
     }
 
@@ -198,17 +218,11 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
     {
         if (is_null($value)) return 0;
         
-        // Return if already numeric
         if (is_numeric($value)) {
             return $value;
         }
 
         if (is_string($value)) {
-             // Remove dots, replace comma with dot
-             // E.g. "100.000,00" -> "100000.00"
-             // E.g. "100.000" -> "100000"
-             
-             // Check format: Indonesian tends to use dot for thousands
              $cleaned = str_replace('.', '', $value);
              $cleaned = str_replace(',', '.', $cleaned);
              
@@ -219,18 +233,11 @@ class AdvancedProcurementImport implements ToCollection, WithHeadingRow, WithChu
         return 0;
     }
 
-    /**
-     * Process in chunks of 500 rows at a time
-     * This prevents memory exhaustion and timeout on large files
-     */
     public function chunkSize(): int
     {
         return 500;
     }
 
-    /**
-     * Batch insert size for better performance
-     */
     public function batchSize(): int
     {
         return 100;
